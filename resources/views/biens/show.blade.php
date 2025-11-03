@@ -213,13 +213,19 @@
                 <h2 class="text-xl font-bold text-gray-800 mb-4">Actions rapides</h2>
                 <div class="space-y-2">
                     <a href="{{ route('contrats.create', ['bien' => $bien->id]) }}" class="block w-full text-center bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md transition duration-200">
-                        Créer un contrat
+                        📄 Créer un contrat
                     </a>
+                    
+                    <!-- ✨ NOUVEAU : Bouton État des lieux -->
+                    <a href="{{ route('etats-des-lieux.create', ['bien' => $bien->id]) }}" class="block w-full text-center bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-md transition duration-200">
+                        📋 Créer un état des lieux
+                    </a>
+                    
                     <a href="{{ route('documents.create', ['bien' => $bien->id]) }}" class="block w-full text-center bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-4 rounded-md transition duration-200">
-                        Générer un document
+                        📝 Générer un document
                     </a>
                     <a href="{{ route('biens.edit', $bien) }}" class="block w-full text-center bg-yellow-500 hover:bg-yellow-600 text-white font-medium py-2 px-4 rounded-md transition duration-200">
-                        Modifier le bien
+                        ✏️ Modifier le bien
                     </a>
                 </div>
             </div>

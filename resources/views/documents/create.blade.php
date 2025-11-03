@@ -14,7 +14,13 @@
             <span class="text-gray-900">Générer un document</span>
         </div>
         <h1 class="text-3xl font-bold text-gray-800">Générer un document</h1>
-        <p class="text-gray-600 mt-1">Sélectionnez un modèle et un contrat pour générer un document</p>
+        <p class="text-gray-600 mt-1">
+            @if(isset($selectedBien))
+                Pour le bien : <strong>{{ $selectedBien->reference }}</strong> - {{ $selectedBien->adresse }}
+            @else
+                Sélectionnez un modèle et un contrat pour générer un document
+            @endif
+        </p>
     </div>
 
     <!-- Messages -->
@@ -35,14 +41,17 @@
                     <h2 class="text-lg font-semibold text-gray-800 mb-4">
                         <span class="bg-blue-600 text-white rounded-full w-6 h-6 inline-flex items-center justify-center text-sm mr-2">1</span>
                         Sélectionnez un contrat
+                        @if(isset($selectedBien))
+                            <span class="ml-2 text-sm font-normal text-gray-600">(uniquement pour ce bien)</span>
+                        @endif
                     </h2>
 
                     @if($contrats->count() > 0)
                         <div class="space-y-3">
                             @foreach($contrats as $contrat)
-                            <label class="flex items-center p-4 border-2 rounded-lg cursor-pointer hover:bg-gray-50 transition {{ $selectedContrat && $selectedContrat->id === $contrat->id ? 'border-blue-500 bg-blue-50' : 'border-gray-200' }}">
+                            <label class="flex items-center p-4 border-2 rounded-lg cursor-pointer hover:bg-gray-50 transition {{ ($selectedContrat && $selectedContrat->id === $contrat->id) || ($contrats->count() === 1) ? 'border-blue-500 bg-blue-50' : 'border-gray-200' }}">
                                 <input type="radio" name="contrat_id" value="{{ $contrat->id }}" 
-                                       {{ $selectedContrat && $selectedContrat->id === $contrat->id ? 'checked' : '' }}
+                                       {{ ($selectedContrat && $selectedContrat->id === $contrat->id) || ($contrats->count() === 1) ? 'checked' : '' }}
                                        class="h-4 w-4 text-blue-600 focus:ring-blue-500" required>
                                 <div class="ml-3 flex-1">
                                     <div class="flex items-center justify-between">
@@ -70,8 +79,29 @@
                             <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                             </svg>
-                            <h3 class="mt-2 text-sm font-medium text-gray-900">Aucun contrat actif</h3>
-                            <p class="mt-1 text-sm text-gray-500">Vous devez créer un contrat avant de générer un document.</p>
+                            @if(isset($selectedBien))
+                                <h3 class="mt-2 text-sm font-medium text-gray-900">Aucun contrat actif pour ce bien</h3>
+                                <p class="mt-1 text-sm text-gray-500">Vous devez créer un contrat pour ce bien avant de générer un document.</p>
+                                <div class="mt-4">
+                                    <a href="{{ route('contrats.create', ['bien' => $selectedBien->id]) }}" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700">
+                                        <svg class="w-5 h-5 mr-2 -ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                                        </svg>
+                                        Créer un contrat pour ce bien
+                                    </a>
+                                </div>
+                            @else
+                                <h3 class="mt-2 text-sm font-medium text-gray-900">Aucun contrat actif</h3>
+                                <p class="mt-1 text-sm text-gray-500">Vous devez créer un contrat avant de générer un document.</p>
+                                <div class="mt-4">
+                                    <a href="{{ route('contrats.create') }}" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700">
+                                        <svg class="w-5 h-5 mr-2 -ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                                        </svg>
+                                        Créer un contrat
+                                    </a>
+                                </div>
+                            @endif
                         </div>
                     @endif
 
@@ -203,10 +233,17 @@
                         </button>
 
                         <!-- Annuler -->
-                        <a href="{{ route('documents.index') }}" 
-                           class="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-3 px-4 rounded-lg transition duration-200 flex items-center justify-center">
-                            Annuler
-                        </a>
+                        @if(isset($selectedBien))
+                            <a href="{{ route('biens.show', $selectedBien) }}" 
+                               class="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-3 px-4 rounded-lg transition duration-200 flex items-center justify-center">
+                                Retour au bien
+                            </a>
+                        @else
+                            <a href="{{ route('documents.index') }}" 
+                               class="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-3 px-4 rounded-lg transition duration-200 flex items-center justify-center">
+                                Annuler
+                            </a>
+                        @endif
                     </div>
 
                     <!-- Aide -->

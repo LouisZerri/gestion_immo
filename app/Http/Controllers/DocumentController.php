@@ -146,11 +146,24 @@ class DocumentController extends Controller
         $contratId = $request->get('contrat_id');
         $selectedContrat = $contratId ? Contrat::with(['bien', 'locataires'])->find($contratId) : null;
         
-        // Liste des contrats actifs
-        $contrats = Contrat::with(['bien', 'locataires'])
-            ->where('statut', 'actif')
-            ->orderBy('reference')
-            ->get();
+        // ✅ Si un bien est pré-sélectionné, filtrer les contrats par ce bien
+        $bienId = $request->get('bien');
+        $selectedBien = $bienId ? Bien::find($bienId) : null;
+        
+        if ($bienId) {
+            // Contrats du bien spécifique uniquement
+            $contrats = Contrat::with(['bien', 'locataires'])
+                ->where('bien_id', $bienId)
+                ->where('statut', 'actif')
+                ->orderBy('reference')
+                ->get();
+        } else {
+            // Tous les contrats actifs
+            $contrats = Contrat::with(['bien', 'locataires'])
+                ->where('statut', 'actif')
+                ->orderBy('reference')
+                ->get();
+        }
         
         // Liste des modèles actifs
         $templates = DocumentTemplate::where('actif', true)
@@ -159,7 +172,7 @@ class DocumentController extends Controller
             ->get()
             ->groupBy('type');
         
-        return view('documents.create', compact('templates', 'contrats', 'selectedContrat'));
+        return view('documents.create', compact('templates', 'contrats', 'selectedContrat', 'selectedBien'));
     }
     
     /**
@@ -174,10 +187,10 @@ class DocumentController extends Controller
         
         $template = DocumentTemplate::findOrFail($request->template_id);
         
-        // ✅ CORRECTIF : Charger les garants via les locataires
+        // ✅ Charger les garants via les locataires
         $contrat = Contrat::with([
             'bien.proprietaire', 
-            'locataires.garants'  // ← Garants chargés via les locataires
+            'locataires.garants'
         ])->findOrFail($request->contrat_id);
         
         // Utiliser le service pour collecter les données et remplacer les balises
@@ -210,10 +223,26 @@ class DocumentController extends Controller
         
         $template = DocumentTemplate::findOrFail($request->template_id);
         
+        // ✅ NOUVEAU : Redirection automatique vers le module État des lieux
+        if (in_array($template->type, ['etat_lieux_entree', 'etat_lieux_sortie'])) {
+            $type = $template->type === 'etat_lieux_entree' ? 'entree' : 'sortie';
+            
+            // Récupérer le contrat pour obtenir le bien_id
+            $contrat = Contrat::findOrFail($request->contrat_id);
+            
+            return redirect()
+                ->route('etats-des-lieux.create', [
+                    'bien' => $contrat->bien_id,
+                    'contrat' => $request->contrat_id,
+                    'type' => $type
+                ])
+                ->with('info', '✨ Vous avez été redirigé vers le module État des lieux pour créer un état des lieux complet avec photos et détails pièce par pièce.');
+        }
+        
         // Charger les garants via les locataires
         $contrat = Contrat::with([
             'bien.proprietaire', 
-            'locataires.garants'  // ← Garants chargés via les locataires
+            'locataires.garants'
         ])->findOrFail($request->contrat_id);
         
         try {
@@ -221,7 +250,7 @@ class DocumentController extends Controller
             $document = $this->generatorService->generate(
                 $template,
                 $contrat,
-                $request->format,  // ← Le format devrait être ici
+                $request->format,
                 Auth::id() ?? null
             );
             
@@ -254,7 +283,6 @@ class DocumentController extends Controller
     {
         // Vérifier si le fichier existe
         if (!Storage::exists($document->file_path)) {
-
             abort(404, 'Fichier introuvable : ' . $document->file_path);
         }
         

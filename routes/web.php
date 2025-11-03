@@ -8,6 +8,7 @@ use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\DocumentShareController;
 use App\Http\Controllers\DocumentTemplateController;
 use App\Http\Controllers\DocumentUploadController;
+use App\Http\Controllers\EtatDesLieuxController;
 use App\Http\Controllers\LocataireController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
@@ -31,7 +32,7 @@ Route::post('/register', [AuthController::class, 'register']);
 // ========================================
 
 Route::middleware('auth')->group(function () {
-    
+
     // Déconnexion
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
@@ -46,9 +47,9 @@ Route::middleware('auth')->group(function () {
     // ========================================
     // ROUTES POUR GESTIONNAIRES UNIQUEMENT
     // ========================================
-    
+
     Route::middleware('role:super_admin,gestionnaire')->group(function () {
-        
+
         // Routes CRUD Propriétaires
         Route::resource('proprietaires', ProprietaireController::class);
         Route::post('proprietaires/{proprietaire}/toggle-mandat', [ProprietaireController::class, 'toggleMandat'])
@@ -103,28 +104,51 @@ Route::middleware('auth')->group(function () {
     // ========================================
     // ROUTES DOCUMENTS (tous utilisateurs authentifiés)
     // ========================================
-    
+
     // Consultation des documents (avec filtrage automatique selon le rôle)
     Route::get('/documents', [DocumentController::class, 'index'])->name('documents.index');
     Route::get('/documents/{document}', [DocumentController::class, 'show'])->name('documents.show');
     Route::get('/documents/{document}/download', [DocumentController::class, 'download'])->name('documents.download');
-    
+
     // Documents par contrat
     Route::get('/contrats/{contrat}/documents', [DocumentController::class, 'byContrat'])->name('contrats.documents');
 
     // ========================================
     // 🆕 ROUTES NOTIFICATIONS (tous utilisateurs authentifiés)
     // ========================================
-    
+
     Route::prefix('notifications')->name('notifications.')->group(function () {
         Route::get('/', [NotificationController::class, 'index'])->name('index');
         Route::get('/{notification}', [NotificationController::class, 'show'])->name('show');
         Route::patch('/{notification}/mark-read', [NotificationController::class, 'markAsRead'])->name('mark-read');
         Route::post('/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('mark-all-read');
         Route::delete('/{notification}', [NotificationController::class, 'destroy'])->name('destroy');
-        
+
         // API endpoints (pour badge et dropdown)
         Route::get('/api/count-unread', [NotificationController::class, 'countUnread'])->name('count-unread');
         Route::get('/api/recent', [NotificationController::class, 'recent'])->name('recent');
     });
+
+    Route::resource('etats-des-lieux', EtatDesLieuxController::class)
+        ->parameters(['etats-des-lieux' => 'etat_des_lieux'])
+        ->names('etats-des-lieux');
+
+    // Routes supplémentaires - AVEC SNAKE_CASE
+    Route::post('etats-des-lieux/{etat_des_lieux}/terminer', [EtatDesLieuxController::class, 'terminer'])
+        ->name('etats-des-lieux.terminer');
+
+    Route::get('etats-des-lieux/{etat_des_lieux}/pdf', [EtatDesLieuxController::class, 'generatePdf'])
+        ->name('etats-des-lieux.pdf');
+
+    Route::post('etats-des-lieux/{etat_des_lieux}/ajouter-piece', [EtatDesLieuxController::class, 'ajouterPiece'])
+        ->name('etats-des-lieux.ajouter-piece');
+
+    Route::post('edl-pieces/{piece}/photos', [EtatDesLieuxController::class, 'uploadPhotos'])
+        ->name('edl-pieces.upload-photos');
+
+    Route::delete('edl-pieces/{piece}/photos', [EtatDesLieuxController::class, 'deletePhoto'])
+        ->name('edl-pieces.delete-photo');
+
+    Route::post('edl-pieces/{piece}/ajouter-element', [EtatDesLieuxController::class, 'ajouterElement'])
+        ->name('edl-pieces.ajouter-element');
 });
