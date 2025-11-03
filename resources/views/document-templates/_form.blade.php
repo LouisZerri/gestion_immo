@@ -213,9 +213,9 @@
                 <p class="text-[10px] text-yellow-700">
                     Pour gérer plusieurs locataires ou garants, utilisez les balises de bloc.<br>
                     <strong>Exemple :</strong><br>
-                    <code class="bg-white px-1 py-0.5 rounded text-[9px]">{{LocataireBlockStart}}</code><br>
-                    Nom : <code class="bg-white px-1 py-0.5 rounded text-[9px]">{{Locataire_NomComplet}}</code><br>
-                    <code class="bg-white px-1 py-0.5 rounded text-[9px]">{{LocataireBlockEnd}}</code>
+                    <code class="bg-white px-1 py-0.5 rounded text-[9px]">@{{ LocataireBlockStart }}</code><br>
+                    Nom : <code class="bg-white px-1 py-0.5 rounded text-[9px]">@{{ Locataire_NomComplet }}</code><br>
+                    <code class="bg-white px-1 py-0.5 rounded text-[9px]">@{{ LocataireBlockEnd }}</code>
                 </p>
             </div>
         </div>
