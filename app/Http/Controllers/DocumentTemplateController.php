@@ -34,20 +34,7 @@ class DocumentTemplateController extends Controller
         $templates = $query->orderBy('type')->orderBy('nom')->paginate(15);
 
         // Liste des types pour le filtre
-        $types = [
-            'bail_vide' => 'Contrat de bail - vide',
-            'bail_meuble' => 'Contrat de bail - meublé',
-            'bail_commercial' => 'Bail commercial',
-            'bail_parking' => 'Bail parking/garage',
-            'etat_lieux_entree' => 'État des lieux d\'entrée',
-            'etat_lieux_sortie' => 'État des lieux de sortie',
-            'quittance_loyer' => 'Quittance de loyer',
-            'avis_echeance' => 'Avis d\'échéance',
-            'mandat_gestion' => 'Mandat de gestion',
-            'inventaire' => 'Inventaire',
-            'attestation_loyer' => 'Attestation de loyer',
-            'autre' => 'Autre',
-        ];
+        $types = $this->getTypes();
 
         return view('document-templates.index', compact('templates', 'types'));
     }
@@ -312,12 +299,14 @@ class DocumentTemplateController extends Controller
                 '{{Contrat_DateSignature}}' => 'Date de signature',
             ],
             'Dates' => [
-                '{{Date_Aujourd_hui}}' => 'Date du jour',
+                '{{Date_Aujourdhui}}' => 'Date du jour',
                 '{{Date_Generation}}' => 'Date de génération',
             ],
             'Boucles' => [
-                '{{LocataireBlockStart}}...{{LocataireBlockEnd}}' => 'Bloc pour chaque locataire',
-                '{{GarantBlockStart}}...{{GarantBlockEnd}}' => 'Bloc pour chaque garant',
+                '{{LocataireBlockStart}}' => 'Début bloc locataire',
+                '{{LocataireBlockEnd}}' => 'Fin bloc locataire',
+                '{{GarantBlockStart}}' => 'Début bloc garant',
+                '{{GarantBlockEnd}}' => 'Fin bloc garant',
             ],
         ];
     }
@@ -369,7 +358,7 @@ class DocumentTemplateController extends Controller
             'Contrat_DepotGarantie' => '1 200,00 €',
             'Contrat_JourPaiement' => '1',
             'Contrat_DateSignature' => '15/12/2023',
-            'Date_Aujourd_hui' => date('d/m/Y'),
+            'Date_Aujourdhui' => date('d/m/Y'),
             'Date_Generation' => date('d/m/Y H:i'),
         ];
     }

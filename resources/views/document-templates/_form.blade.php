@@ -37,7 +37,7 @@
                     @enderror
                 </div>
 
-                <!-- ✅ NOUVEAU : Types de biens concernés -->
+                <!-- Types de biens concernés -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">
                         Types de biens concernés (optionnel)
@@ -196,10 +196,12 @@
                     <div class="border-b border-gray-200 pb-4">
                         <h3 class="text-sm font-semibold text-gray-700 mb-2">{{ $category }}</h3>
                         <div class="space-y-1">
-                            @foreach($tags as $tag)
-                                <button type="button" onclick="insertTag('{{ $tag }}')"
-                                        class="w-full text-left px-3 py-2 text-xs bg-gray-50 hover:bg-blue-50 border border-gray-200 hover:border-blue-300 rounded transition duration-150">
-                                    <code class="text-blue-600 font-mono">{{ $tag }}</code>
+                            @foreach($tags as $tagCode => $tagDescription)
+                                <button type="button" onclick="insertTag('{{ $tagCode }}')"
+                                        class="w-full text-left px-3 py-2 text-xs bg-gray-50 hover:bg-blue-50 border border-gray-200 hover:border-blue-300 rounded transition duration-150"
+                                        title="{{ $tagDescription }}">
+                                    <code class="text-blue-600 font-mono">{{ $tagCode }}</code>
+                                    <span class="block text-gray-600 text-[10px] mt-0.5">{{ $tagDescription }}</span>
                                 </button>
                             @endforeach
                         </div>
@@ -213,9 +215,9 @@
                 <p class="text-[10px] text-yellow-700">
                     Pour gérer plusieurs locataires ou garants, utilisez les balises de bloc.<br>
                     <strong>Exemple :</strong><br>
-                    <code class="bg-white px-1 py-0.5 rounded text-[9px]">@{{ LocataireBlockStart }}</code><br>
-                    Nom : <code class="bg-white px-1 py-0.5 rounded text-[9px]">@{{ Locataire_NomComplet }}</code><br>
-                    <code class="bg-white px-1 py-0.5 rounded text-[9px]">@{{ LocataireBlockEnd }}</code>
+                    <code class="bg-white px-1 py-0.5 rounded text-[9px]">@{{LocataireBlockStart}}</code><br>
+                    Nom : <code class="bg-white px-1 py-0.5 rounded text-[9px]">@{{Locataire_NomComplet}}</code><br>
+                    <code class="bg-white px-1 py-0.5 rounded text-[9px]">@{{LocataireBlockEnd}}</code>
                 </p>
             </div>
         </div>
@@ -248,9 +250,18 @@
 
     // Fonction pour insérer une balise dans l'éditeur
     function insertTag(tag) {
-        if (tinymce.get('contenu')) {
-            tinymce.get('contenu').insertContent(tag + ' ');
-            tinymce.get('contenu').focus();
+        const editor = tinymce.get('contenu');
+        
+        if (editor) {
+            // Insérer la balise avec un espace après pour faciliter la saisie
+            editor.insertContent(tag + ' ');
+            
+            // Mettre le focus sur l'éditeur
+            editor.focus();
+            
+            console.log('✅ Balise insérée:', tag);
+        } else {
+            console.error('❌ Éditeur TinyMCE non trouvé');
         }
     }
 
