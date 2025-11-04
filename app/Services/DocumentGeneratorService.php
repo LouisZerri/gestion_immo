@@ -7,19 +7,19 @@ use App\Models\DocumentTemplate;
 use App\Models\Contrat;
 use App\Models\DocumentLog;
 use Barryvdh\DomPDF\Facade\Pdf;
-use PhpOffice\PhpWord\PhpWord;
-use PhpOffice\PhpWord\IOFactory;
-use PhpOffice\PhpWord\Shared\Html;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class DocumentGeneratorService
 {
     /**
-     * Générer un document à partir d'un modèle et d'un contrat
+     * Générer un document PDF à partir d'un modèle et d'un contrat
      */
     public function generate(DocumentTemplate $template, Contrat $contrat, string $format = 'pdf', ?int $userId = null): Document
     {
+        // ✅ Forcer le format PDF
+        $format = 'pdf';
+
         // Récupérer toutes les données nécessaires
         $data = $this->collectData($contrat);
 
@@ -41,20 +41,9 @@ class DocumentGeneratorService
             $content = $this->insertFooter($content, $template->footer_text);
         }
 
-        // Générer le fichier selon le format
-        $filePath = match ($format) {
-            'pdf' => $this->generatePDF($content, $template, $contrat),
-            'docx' => $this->generateWord($content, $template, $contrat),
-            default => throw new \InvalidArgumentException("Format non supporté: {$format}")
-        };
-
-        // ✅ CORRECTIF : Calculer file_type et file_size
-        $fileType = match ($format) {
-            'pdf' => 'application/pdf',
-            'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            default => 'application/octet-stream'
-        };
-
+        // Générer le PDF
+        $filePath = $this->generatePDF($content, $template, $contrat);
+        $fileType = 'application/pdf';
         $fileSize = Storage::exists($filePath) ? Storage::size($filePath) : 0;
 
         // Créer l'enregistrement du document
@@ -64,7 +53,7 @@ class DocumentGeneratorService
             'bien_id' => $contrat->bien_id,
             'nom' => $this->generateDocumentName($template, $contrat),
             'type' => $template->type,
-            'format' => $format,
+            'format' => 'pdf',
             'file_path' => $filePath,
             'file_type' => $fileType,
             'file_size' => $fileSize,
@@ -74,13 +63,13 @@ class DocumentGeneratorService
         DocumentLog::create([
             'document_id' => $document->id,
             'user_id' => $userId,
-            'action' => 'genere',  // ✅ CORRECTIF : 'genere' au lieu de 'generated'
-            'details' => json_encode([  // ✅ CORRECTIF : Encoder en JSON explicitement
+            'action' => 'genere',
+            'details' => json_encode([
                 'template' => $template->nom,
-                'format' => $format,
+                'format' => 'pdf',
                 'contrat' => $contrat->reference,
             ]),
-            'ip_address' => request()->ip(),  // ✅ AJOUTÉ
+            'ip_address' => request()->ip(),
         ]);
 
         return $document;
@@ -95,7 +84,7 @@ class DocumentGeneratorService
         $proprietaire = $bien->proprietaire;
         $locataires = $contrat->locataires;
 
-        // ✅ CORRECTIF : Récupérer les garants via les locataires
+        // Récupérer les garants via les locataires
         $garants = collect();
         foreach ($locataires as $locataire) {
             if ($locataire->garants) {
@@ -274,7 +263,6 @@ class DocumentGeneratorService
      */
     private function insertLogo(string $content, string $logoPath): string
     {
-        $logoUrl = Storage::url($logoPath);
         $logoHtml = '<div style="text-align: center; margin-bottom: 20px;"><img src="' . public_path('storage/' . $logoPath) . '" style="max-height: 100px; max-width: 300px;"></div>';
 
         // Insérer après la balise <body> si présente
@@ -335,121 +323,10 @@ class DocumentGeneratorService
         $fileName = $this->generateFileName($template, $contrat, 'pdf');
         $filePath = 'documents/' . $fileName;
 
-        // ✅ Utiliser Storage::put au lieu de storage_path
+        // Sauvegarder avec Storage
         Storage::put($filePath, $pdf->output());
 
         return $filePath;
-    }
-
-    /**
-     * Générer un fichier Word - VERSION SANS HTML (ultra-compatible)
-     */
-    private function generateWord(string $content, DocumentTemplate $template, Contrat $contrat): string
-    {
-        $phpWord = new PhpWord();
-        $section = $phpWord->addSection();
-
-        // Extraire le texte brut du HTML
-        $textContent = strip_tags($content);
-        $textContent = html_entity_decode($textContent, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-
-        // Découper en lignes
-        $lines = explode("\n", $textContent);
-
-        foreach ($lines as $line) {
-            $line = trim($line);
-            if (empty($line)) {
-                $section->addTextBreak();
-                continue;
-            }
-
-            // Détecter si c'est un titre (tout en majuscules)
-            if (strtoupper($line) === $line && strlen($line) > 3) {
-                $section->addText($line, ['bold' => true, 'size' => 14]);
-            } else {
-                $section->addText($line, ['size' => 11]);
-            }
-        }
-
-        // Nom du fichier et sauvegarde
-        $fileName = $this->generateFileName($template, $contrat, 'docx');
-        $tempPath = sys_get_temp_dir() . '/' . $fileName;
-
-        $objWriter = IOFactory::createWriter($phpWord, 'Word2007');
-        $objWriter->save($tempPath);
-
-        $filePath = 'documents/' . $fileName;
-        Storage::put($filePath, file_get_contents($tempPath));
-        @unlink($tempPath);
-
-        return $filePath;
-    }
-
-    /**
-     * Nettoyer le HTML pour la conversion Word
-     */
-    private function cleanHtmlForWord(string $html): string
-    {
-        // ✅ NETTOYAGE ULTRA-AGRESSIF pour PHPWord
-
-        // 1. Supprimer COMPLÈTEMENT les balises <style> et leur contenu
-        $html = preg_replace('/<style\b[^>]*>.*?<\/style>/is', '', $html);
-
-        // 2. Supprimer les balises structurelles HTML
-        $html = preg_replace('/<(!DOCTYPE|html|head|meta|link|script)[^>]*>/i', '', $html);
-        $html = preg_replace('/<\/(html|head)>/i', '', $html);
-
-        // 3. Supprimer la balise <body> mais garder son contenu
-        $html = preg_replace('/<body[^>]*>/i', '', $html);
-        $html = preg_replace('/<\/body>/i', '', $html);
-
-        // 4. Supprimer TOUS les attributs style (inline CSS)
-        $html = preg_replace('/\s+style="[^"]*"/i', '', $html);
-        $html = preg_replace("/\s+style='[^']*'/i", '', $html);
-
-        // 5. Supprimer TOUS les attributs class, id, etc.
-        $html = preg_replace('/\s+(class|id|onclick|onload|data-[a-z-]+)="[^"]*"/i', '', $html);
-
-        // 6. Convertir les <div> en <p>
-        $html = preg_replace('/<div[^>]*>/i', '<p>', $html);
-        $html = preg_replace('/<\/div>/i', '</p>', $html);
-
-        // 7. Simplifier les headers (h1-h6 → strong dans p)
-        $html = preg_replace('/<h1[^>]*>(.*?)<\/h1>/is', '<p><strong>$1</strong></p>', $html);
-        $html = preg_replace('/<h2[^>]*>(.*?)<\/h2>/is', '<p><strong>$1</strong></p>', $html);
-        $html = preg_replace('/<h3[^>]*>(.*?)<\/h3>/is', '<p><strong>$1</strong></p>', $html);
-        $html = preg_replace('/<h[4-6][^>]*>(.*?)<\/h[4-6]>/is', '<p>$1</p>', $html);
-
-        // 8. Nettoyer les <p> qui contiennent d'autres <p> (imbrication interdite)
-        $html = preg_replace('/<p[^>]*><p[^>]*>/i', '<p>', $html);
-        $html = preg_replace('/<\/p><\/p>/i', '</p>', $html);
-
-        // 9. Supprimer les paragraphes vides
-        $html = preg_replace('/<p[^>]*>\s*<\/p>/i', '', $html);
-
-        // 10. Normaliser les balises <br>
-        $html = preg_replace('/<br\s*\/?>/i', '<br/>', $html);
-
-        // 11. Supprimer les espaces multiples
-        $html = preg_replace('/\s+/', ' ', $html);
-        $html = preg_replace('/>\s+</i', '><', $html);
-
-        // 12. Ajouter des sauts de ligne entre les paragraphes pour lisibilité
-        $html = str_replace('</p><p>', '</p>' . "\n" . '<p>', $html);
-        $html = str_replace('</p><br/>', '</p>' . "\n" . '<br/>', $html);
-
-        // 13. Si pas de <p>, wrapper le contenu
-        if (!preg_match('/<p/i', $html) && !empty(trim(strip_tags($html)))) {
-            $html = '<p>' . $html . '</p>';
-        }
-
-        // 14. S'assurer qu'on a du contenu
-        $plainText = strip_tags($html);
-        if (empty(trim($plainText))) {
-            $html = '<p>Document vide</p>';
-        }
-
-        return trim($html);
     }
 
     /**
@@ -470,7 +347,6 @@ class DocumentGeneratorService
      */
     private function generateDocumentName(DocumentTemplate $template, Contrat $contrat): string
     {
-        // ✅ CORRECTIF : Utiliser un format de date sans slash
         return "{$template->nom} - {$contrat->reference} - " . now()->format('d-m-Y');
     }
 }

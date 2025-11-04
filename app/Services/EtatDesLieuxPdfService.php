@@ -33,16 +33,23 @@ class EtatDesLieuxPdfService
             'edl' => $etatDesLieux
         ])->render();
 
-        // Configurer Dompdf
+        // Configurer Dompdf avec options optimisées
         $options = new Options();
         $options->set('isHtml5ParserEnabled', true);
-        $options->set('isRemoteEnabled', true);
+        $options->set('isRemoteEnabled', true); // Pour les images distantes si besoin
         $options->set('defaultFont', 'DejaVu Sans');
         $options->set('dpi', 150);
+        $options->set('chroot', storage_path('app/public')); // ✅ AJOUTÉ : Autorise l'accès au stockage local
+        $options->set('debugKeepTemp', false); // Nettoie les fichiers temporaires
+        $options->set('debugPng', false); // Optimise le traitement des PNG
+        $options->set('debugCss', false);
+        $options->set('isPhpEnabled', false); // Sécurité : désactive PHP dans les templates
         
         $dompdf = new Dompdf($options);
         $dompdf->loadHtml($html);
         $dompdf->setPaper('A4', 'portrait');
+        
+        // Rendre le PDF
         $dompdf->render();
 
         // Générer le nom de fichier
@@ -57,7 +64,7 @@ class EtatDesLieuxPdfService
             'nom' => $this->generateDocumentName($etatDesLieux),
             'type' => $etatDesLieux->type === 'entree' ? 'etat_lieux_entree' : 'etat_lieux_sortie',
             'format' => 'pdf',
-            'file_type' => 'application/pdf', // ✅ AJOUTÉ
+            'file_type' => 'application/pdf',
             'file_path' => $filePath,
             'file_size' => Storage::size($filePath),
             'contrat_id' => $etatDesLieux->contrat_id,
@@ -65,7 +72,7 @@ class EtatDesLieuxPdfService
             'template_id' => null,
             'generated_by' => $userId,
             'is_uploaded' => false,
-            'statut' => 'genere', // ✅ AJOUTÉ si nécessaire
+            'statut' => 'genere',
         ]);
 
         // Associer le document à l'état des lieux
@@ -229,5 +236,80 @@ class EtatDesLieuxPdfService
                 ->filter->isComplete()
                 ->count(),
         ];
+    }
+
+    /**
+     * Optimiser les images avant génération (optionnel)
+     * Peut être utilisé pour réduire la taille du PDF si nécessaire
+     * 
+     * @param string $imagePath
+     * @param int $maxWidth
+     * @param int $quality
+     * @return string Base64 encoded image
+     */
+    public function optimizeImage(string $imagePath, int $maxWidth = 800, int $quality = 85): ?string
+    {
+        if (!file_exists($imagePath)) {
+            return null;
+        }
+
+        $imageInfo = getimagesize($imagePath);
+        if (!$imageInfo) {
+            return null;
+        }
+
+        // Créer l'image source selon le type
+        switch ($imageInfo[2]) {
+            case IMAGETYPE_JPEG:
+                $source = imagecreatefromjpeg($imagePath);
+                break;
+            case IMAGETYPE_PNG:
+                $source = imagecreatefrompng($imagePath);
+                break;
+            case IMAGETYPE_GIF:
+                $source = imagecreatefromgif($imagePath);
+                break;
+            default:
+                return null;
+        }
+
+        // Calculer les nouvelles dimensions
+        $width = imagesx($source);
+        $height = imagesy($source);
+        
+        if ($width > $maxWidth) {
+            $ratio = $maxWidth / $width;
+            $newWidth = $maxWidth;
+            $newHeight = (int)($height * $ratio);
+        } else {
+            $newWidth = $width;
+            $newHeight = $height;
+        }
+
+        // Créer l'image redimensionnée
+        $thumb = imagecreatetruecolor($newWidth, $newHeight);
+        
+        // Préserver la transparence pour PNG et GIF
+        if ($imageInfo[2] == IMAGETYPE_PNG || $imageInfo[2] == IMAGETYPE_GIF) {
+            imagealphablending($thumb, false);
+            imagesavealpha($thumb, true);
+            $transparent = imagecolorallocatealpha($thumb, 255, 255, 255, 127);
+            imagefilledrectangle($thumb, 0, 0, $newWidth, $newHeight, $transparent);
+        }
+
+        // Redimensionner
+        imagecopyresampled($thumb, $source, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
+
+        // Capturer l'output
+        ob_start();
+        imagejpeg($thumb, null, $quality);
+        $imageData = ob_get_clean();
+
+        // Nettoyer
+        imagedestroy($source);
+        imagedestroy($thumb);
+
+        // Retourner en base64
+        return base64_encode($imageData);
     }
 }

@@ -211,19 +211,21 @@ class DocumentController extends Controller
     }
     
     /**
-     * Générer le document
+     * Générer le document (PDF uniquement)
      */
     public function store(Request $request)
     {
         $request->validate([
             'template_id' => 'required|exists:document_templates,id',
             'contrat_id' => 'required|exists:contrats,id',
-            'format' => 'required|in:pdf,docx',
         ]);
+        
+        // ✅ Format toujours en PDF
+        $format = 'pdf';
         
         $template = DocumentTemplate::findOrFail($request->template_id);
         
-        // ✅ NOUVEAU : Redirection automatique vers le module État des lieux
+        // ✅ Redirection automatique vers le module État des lieux
         if (in_array($template->type, ['etat_lieux_entree', 'etat_lieux_sortie'])) {
             $type = $template->type === 'etat_lieux_entree' ? 'entree' : 'sortie';
             
@@ -246,17 +248,17 @@ class DocumentController extends Controller
         ])->findOrFail($request->contrat_id);
         
         try {
-            // Générer le document
+            // Générer le document en PDF
             $document = $this->generatorService->generate(
                 $template,
                 $contrat,
-                $request->format,
+                $format,
                 Auth::id() ?? null
             );
             
             return redirect()
                 ->route('documents.show', $document)
-                ->with('success', 'Document généré avec succès !');
+                ->with('success', 'Document PDF généré avec succès !');
                 
         } catch (\Exception $e) {
             

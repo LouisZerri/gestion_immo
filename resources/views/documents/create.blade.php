@@ -13,12 +13,12 @@
             </svg>
             <span class="text-gray-900">Générer un document</span>
         </div>
-        <h1 class="text-3xl font-bold text-gray-800">Générer un document</h1>
+        <h1 class="text-3xl font-bold text-gray-800">Générer un document PDF</h1>
         <p class="text-gray-600 mt-1">
             @if(isset($selectedBien))
                 Pour le bien : <strong>{{ $selectedBien->reference }}</strong> - {{ $selectedBien->adresse }}
             @else
-                Sélectionnez un modèle et un contrat pour générer un document
+                Sélectionnez un modèle et un contrat pour générer un document PDF
             @endif
         </p>
     </div>
@@ -32,6 +32,9 @@
 
     <form id="generation-form" action="{{ route('documents.store') }}" method="POST">
         @csrf
+        
+        <!-- ✅ Format toujours en PDF (caché) -->
+        <input type="hidden" name="format" value="pdf">
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <!-- Colonne principale -->
@@ -169,42 +172,6 @@
                         <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
                     @enderror
                 </div>
-
-                <!-- Sélection du format -->
-                <div class="bg-white rounded-lg shadow-md p-6">
-                    <h2 class="text-lg font-semibold text-gray-800 mb-4">
-                        <span class="bg-blue-600 text-white rounded-full w-6 h-6 inline-flex items-center justify-center text-sm mr-2">3</span>
-                        Choisissez le format
-                    </h2>
-
-                    <div class="grid grid-cols-2 gap-4">
-                        <!-- PDF -->
-                        <label id="format-pdf-label" class="format-option flex flex-col items-center p-6 border-2 rounded-lg cursor-pointer hover:bg-gray-50 transition border-blue-500 bg-blue-50">
-                            <input type="radio" name="format" value="pdf" id="format-pdf" checked class="hidden" required>
-                            <svg class="w-16 h-16 text-red-500 mb-3" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z"/>
-                                <path d="M14 2v6h6M10 13H8v-2h2v2zm0 4H8v-2h2v2zm6-4h-2v-2h2v2zm0 4h-2v-2h2v2z"/>
-                            </svg>
-                            <span class="text-lg font-semibold text-gray-900">PDF</span>
-                            <span class="text-sm text-gray-500 mt-1">Format universel</span>
-                        </label>
-
-                        <!-- Word -->
-                        <label id="format-docx-label" class="format-option flex flex-col items-center p-6 border-2 rounded-lg cursor-pointer hover:bg-gray-50 transition border-gray-200">
-                            <input type="radio" name="format" value="docx" id="format-docx" class="hidden">
-                            <svg class="w-16 h-16 text-blue-500 mb-3" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z"/>
-                                <path d="M14 2v6h6"/>
-                            </svg>
-                            <span class="text-lg font-semibold text-gray-900">Word</span>
-                            <span class="text-sm text-gray-500 mt-1">Modifiable (.docx)</span>
-                        </label>
-                    </div>
-
-                    @error('format')
-                        <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
-                    @enderror
-                </div>
             </div>
 
             <!-- Colonne latérale - Actions -->
@@ -223,13 +190,13 @@
                             Prévisualiser
                         </button>
 
-                        <!-- Générer -->
+                        <!-- Générer PDF -->
                         <button type="submit" 
-                                class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg shadow-md transition duration-200 flex items-center justify-center">
+                                class="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-4 rounded-lg shadow-md transition duration-200 flex items-center justify-center">
                             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
                             </svg>
-                            Générer le document
+                            Générer le PDF
                         </button>
 
                         <!-- Annuler -->
@@ -253,14 +220,19 @@
                             <li>• Sélectionnez un contrat actif</li>
                             <li>• Choisissez un modèle adapté</li>
                             <li>• Prévisualisez avant de générer</li>
-                            <li>• Le document sera téléchargeable</li>
+                            <li>• Le PDF sera téléchargeable</li>
                         </ul>
                     </div>
 
-                    <!-- Indicateur de format sélectionné -->
-                    <div class="mt-4 p-3 bg-gray-50 rounded-lg text-sm">
-                        <strong>Format sélectionné :</strong>
-                        <span id="selected-format-display" class="ml-2 font-medium text-blue-600">PDF</span>
+                    <!-- Info format -->
+                    <div class="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm">
+                        <div class="flex items-center">
+                            <svg class="w-5 h-5 text-red-600 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z"/>
+                                <path d="M14 2v6h6M10 13H8v-2h2v2zm0 4H8v-2h2v2zm6-4h-2v-2h2v2zm0 4h-2v-2h2v2z"/>
+                            </svg>
+                            <strong class="text-red-900">Format : PDF uniquement</strong>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -269,58 +241,6 @@
 </div>
 
 <script>
-// ✅ Gestion améliorée du changement de format
-document.addEventListener('DOMContentLoaded', function() {
-    const formatPdfLabel = document.getElementById('format-pdf-label');
-    const formatDocxLabel = document.getElementById('format-docx-label');
-    const formatPdfInput = document.getElementById('format-pdf');
-    const formatDocxInput = document.getElementById('format-docx');
-    const selectedFormatDisplay = document.getElementById('selected-format-display');
-    
-    // Fonction pour mettre à jour l'UI
-    function updateFormatUI(selectedFormat) {
-        if (selectedFormat === 'pdf') {
-            formatPdfLabel.classList.add('border-blue-500', 'bg-blue-50');
-            formatPdfLabel.classList.remove('border-gray-200');
-            formatDocxLabel.classList.remove('border-blue-500', 'bg-blue-50');
-            formatDocxLabel.classList.add('border-gray-200');
-            formatPdfInput.checked = true;
-            formatDocxInput.checked = false;
-            selectedFormatDisplay.textContent = 'PDF';
-        } else {
-            formatDocxLabel.classList.add('border-blue-500', 'bg-blue-50');
-            formatDocxLabel.classList.remove('border-gray-200');
-            formatPdfLabel.classList.remove('border-blue-500', 'bg-blue-50');
-            formatPdfLabel.classList.add('border-gray-200');
-            formatDocxInput.checked = true;
-            formatPdfInput.checked = false;
-            selectedFormatDisplay.textContent = 'Word (DOCX)';
-        }
-        console.log('Format sélectionné :', selectedFormat);
-    }
-    
-    // Click sur le label PDF
-    formatPdfLabel.addEventListener('click', function(e) {
-        e.preventDefault();
-        updateFormatUI('pdf');
-    });
-    
-    // Click sur le label Word
-    formatDocxLabel.addEventListener('click', function(e) {
-        e.preventDefault();
-        updateFormatUI('docx');
-    });
-    
-    // Click sur les inputs (au cas où)
-    formatPdfInput.addEventListener('change', function() {
-        if (this.checked) updateFormatUI('pdf');
-    });
-    
-    formatDocxInput.addEventListener('change', function() {
-        if (this.checked) updateFormatUI('docx');
-    });
-});
-
 function previewDocument() {
     const form = document.getElementById('generation-form');
     const formData = new FormData(form);

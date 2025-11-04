@@ -116,19 +116,43 @@
             font-style: italic;
         }
 
+        /* ✅ CSS CORRIGÉ POUR LES PHOTOS - VERSION PROPRE */
         .photos-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 10px;
+            width: 100%;
             margin-bottom: 15px;
+        }
+
+        .photo-item {
+            display: inline-block;
+            width: 48%;
+            margin-right: 2%;
+            margin-bottom: 10px;
+            vertical-align: top;
+            text-align: center;
+        }
+
+        .photo-item:nth-child(2n) {
+            margin-right: 0;
         }
 
         .photo-item img {
             width: 100%;
-            height: auto;
-            max-height: 150px;
-            object-fit: cover;
+            height: 150px;
+            object-fit: contain;
             border: 1px solid #ddd;
+            background-color: #f9f9f9;
+            padding: 5px;
+        }
+
+        .photo-unavailable {
+            background: #f0f0f0;
+            padding: 20px;
+            text-align: center;
+            border: 1px solid #ddd;
+            height: 150px;
+            line-height: 150px;
+            color: #999;
+            font-size: 9pt;
         }
 
         .footer {
@@ -388,14 +412,47 @@
             </tbody>
         </table>
 
-        <!-- Photos de la pièce -->
+        <!-- Photos de la pièce (✅ VERSION FINALE CORRIGÉE) -->
         @if($piece->photos && count($piece->photos) > 0)
-        <div style="margin-top: 15px;">
-            <strong>📷 Photos ({{ count($piece->photos) }}) :</strong>
+        <div style="margin-top: 15px; page-break-inside: avoid;">
+            <strong style="display: block; margin-bottom: 10px;">📷 Photos ({{ count($piece->photos) }}) :</strong>
             <div class="photos-grid">
                 @foreach($piece->photos as $photo)
                 <div class="photo-item">
-                    <img src="{{ public_path('storage/' . $photo) }}" alt="Photo {{ $loop->index + 1 }}">
+                    @php
+                        // Chemin absolu du fichier
+                        $imagePath = storage_path('app/public/' . $photo);
+                        
+                        // Vérifier si le fichier existe
+                        if (file_exists($imagePath)) {
+                            // Encoder en base64 pour Dompdf
+                            $imageContent = file_get_contents($imagePath);
+                            $imageBase64 = base64_encode($imageContent);
+                            $imageExtension = pathinfo($imagePath, PATHINFO_EXTENSION);
+                            
+                            // Gérer les types MIME
+                            $mimeTypes = [
+                                'jpg' => 'jpeg',
+                                'jpeg' => 'jpeg',
+                                'png' => 'png',
+                                'gif' => 'gif',
+                                'webp' => 'webp'
+                            ];
+                            
+                            $mimeType = $mimeTypes[strtolower($imageExtension)] ?? 'jpeg';
+                            $imageSrc = "data:image/{$mimeType};base64,{$imageBase64}";
+                        } else {
+                            $imageSrc = null;
+                        }
+                    @endphp
+                    
+                    @if($imageSrc)
+                        <img src="{{ $imageSrc }}" alt="Photo {{ $loop->index + 1 }}">
+                    @else
+                        <div class="photo-unavailable">
+                            Photo indisponible
+                        </div>
+                    @endif
                 </div>
                 @endforeach
             </div>
